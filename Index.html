@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Niecne Community - Sklep</title>
+    <!-- Profesjonalny i lekki framework CSS do ciemnego stylu -->
+    <script src="https://tailwindcss.com"></script>
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- Główna karta sklepu -->
+    <div class="bg-zinc-900 border border-zinc-800 p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center">
+        <div class="w-16 h-16 bg-orange-600/10 text-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-orange-500/20 text-3xl">
+            🍞
+        </div>
+        <h1 class="text-2xl font-bold text-zinc-50">Niecne_System.jar</h1>
+        <p class="text-zinc-400 text-xs mt-1 mb-6">Automatyczny system wydań i pobrań zintegrowany z TostHost.</p>
+
+        <!-- Blok ceny i zakupu -->
+        <div id="sklepBox">
+            <div class="bg-zinc-950 border border-zinc-800/80 rounded-xl p-4 mb-6">
+                <span class="text-zinc-500 text-xs uppercase tracking-wider font-semibold block">Cena bezpieczna</span>
+                <span class="text-3xl font-extrabold text-orange-400">19.99 PLN</span>
+            </div>
+
+            <button onclick="rozpocznijZakup()" id="btnKup" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-4 rounded-lg shadow-lg shadow-orange-600/20 transition-all duration-200 active:scale-[0.98]">
+                Kup przez TostHost (BLIK) ⚡
+            </button>
+        </div>
+
+        <!-- Ekran ładowania po kliknięciu i przycisk pobierania -->
+        <div id="statusBox" class="hidden space-y-4">
+            <div id="loader" class="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <p id="statusTekst" class="text-sm text-zinc-400">Generowanie bezpiecznego linku płatności...</p>
+            
+            <!-- Dynamiczny przycisk, który podmieni cenę -->
+            <a id="btnPobierz" href="#" download class="hidden w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-lg text-center transition-all duration-200 shadow-lg shadow-emerald-600/20">
+                Pobierz Twój Plugin ⬇️
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // === TUTAJ WKLEISZ ADRES URL SWOJEGO URUCHOMIONEGO SERWERA Z RENDER.COM ===
+        const BACKEND_URL = 'TUTAJ_WKLEJ_LINK_Z_RENDERA_Z_KROKU_4'; 
+        // =======================================================================
+        
+        let transakcjaId = "";
+
+        async function rozpocznijZakup() {
+            document.getElementById('sklepBox').classList.add('hidden');
+            document.getElementById('statusBox').classList.remove('hidden');
+
+            try {
+                // Wywołujemy nasz darmowy bezpieczny backend
+                const res = await fetch(`${BACKEND_URL}/api/create-payment`, { method: 'POST' });
+                const data = await res.json();
+                
+                transakcjaId = data.payment_id;
+                
+                // Otwieramy oficjalne, bezpieczne okno płatności TostHost
+                window.open(data.payment_url, '_blank');
+
+                document.getElementById('statusTekst').innerText = "Oczekiwanie na zaksięgowanie przelewu w TostHost...";
+                
+                // Rozpoczynamy pętlę sprawdzającą status co 4 sekundy
+                sprawdzajStatus();
+            } catch (e) {
+                document.getElementById('statusTekst').innerText = "❌ Problem z połączeniem.";
+            }
+        }
+
+        function sprawdzajStatus() {
+            const interval = setInterval(async () => {
+                const res = await fetch(`${BACKEND_URL}/api/check-payment/${transakcjaId}`);
+                const data = await res.json();
+
+                // Jeśli system potwierdził wpłatę, ukrywamy ładowanie i dajemy przycisk POBIERZ
+                if (data.status === 'paid') {
+                    clearInterval(interval);
+                    document.getElementById('loader').classList.add('hidden');
+                    document.getElementById('statusTekst').innerHTML = "<span class='text-emerald-400 font-semibold'>✅ Płatność zatwierdzona!</span>";
+                    
+                    const btnPobierz = document.getElementById('btnPobierz');
+                    btnPobierz.href = data.download_url;
+                    btnPobierz.classList.remove('hidden');
+                }
+            }, 4000);
+        }
+    </script>
+</body>
+</html>
